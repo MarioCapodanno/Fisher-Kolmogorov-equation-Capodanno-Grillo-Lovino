@@ -42,6 +42,8 @@ public:
   class FunctionD : public TensorFunction<2, dim>
   {
   public:
+    FunctionD(const double dext_value) : dext(dext_value) {}
+    
     virtual Tensor<2, dim>
     value(const Point<dim> &/*p*/) const override
     {
@@ -50,7 +52,7 @@ public:
 
       for (unsigned int i = 0; i < dim; ++i)
         {
-          result[i][i] += 1.0; //dext;
+          result[i][i] += dext; 
 
           for (unsigned int j = 0; j < dim; ++j)
             result[i][j] += 0.0; //daxn * n * n;
@@ -58,6 +60,9 @@ public:
 
       return result;
     }
+    
+  private:
+    const double dext;
   };
 
   // Function for the forcing term.
@@ -113,16 +118,16 @@ public:
     }
   };
 
-  // Constructor. We provide the final time, time step Delta t and theta method
-  // parameter as constructor arguments.
-  FisherKolmogorov3D(const double alpha_,
-                     const std::string &mesh_file_name_,
+  FisherKolmogorov3D(const std::string &mesh_file_name_,
+                     const double dext_value,
+                     const double alpha_,
                      const unsigned int &r_,
                      const double &T_, 
                      const double &deltat_)
     : mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
     , pcout(std::cout, mpi_rank == 0)
+    , d(dext_value) 
     , alpha(alpha_)
     , T(T_)
     , mesh_file_name(mesh_file_name_)

@@ -25,20 +25,16 @@ int main(int argc, char *argv[]) {
 
   // Read parameters
   ParameterHandler prm;
+  SimulationParameters params;
   ParameterReader parameter_reader(prm);
+
   try {
-    parameter_reader.read_parameters(parameter_file);
+    params = parameter_reader.read_parameters(parameter_file);
   } catch (const std::exception &e) {
     if (mpi_rank == 0)
       std::cerr << "Error reading parameter file: " << e.what() << std::endl;
     return 1;
   }
-
-  unsigned int degree;
-
-  double T, deltat, alpha;
-  unsigned int max_newton_iter, max_cg_iter;
-  double newton_tolerance, cg_tolerance_factor;
 
   std::vector<double> errors_L2;
   std::vector<double> errors_H1;
@@ -50,33 +46,19 @@ int main(int argc, char *argv[]) {
   };
   const std::vector<double> h_vector = {0.5, 0.25, 0.125, 0.0625, 0.03125};
 
-  // Read mesh and FE parameters
-  prm.enter_subsection("Mesh & geometry parameters");
-  degree = prm.get_integer("Degree");
-  prm.leave_subsection();
-
-  prm.enter_subsection("Physical constants");
-  alpha = prm.get_double("Alpha coefficient");
-  prm.leave_subsection();
-
-  prm.enter_subsection("Time stepping parameters");
-  T = prm.get_double("T");
-  deltat = prm.get_double("deltat");
-  prm.leave_subsection();
-
-  prm.enter_subsection("Solver parameters");
-  max_newton_iter = prm.get_integer("Max Newton iterations");
-  newton_tolerance = prm.get_double("Newton tolerance");
-  max_cg_iter = prm.get_integer("Max CG iterations");
-  cg_tolerance_factor = prm.get_double("CG tolerance factor");
-  prm.leave_subsection();
-
   // Loop over mesh files and solve problems
   for (const auto &mesh : mesh_file_names) {
-    FisherKolmogorov3D problem(alpha, mesh, degree, T, deltat);
+    FisherKolmogorov3D problem(mesh,
+                              params.dext,
+                              params.alpha, 
+                              params.r, 
+                              params.T, 
+                              params.deltat);
 
-    problem.set_solver_parameters(max_newton_iter, newton_tolerance,
-                                  max_cg_iter, cg_tolerance_factor);
+    problem.set_solver_parameters(params.max_newton_iterations,
+                                  params.newton_tolerance,
+                                  params.max_cg_iterations,
+                                  params.cg_tolerance_factor); 
     problem.setup();
     problem.solve();
 
