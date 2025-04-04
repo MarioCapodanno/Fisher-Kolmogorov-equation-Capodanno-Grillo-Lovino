@@ -40,7 +40,7 @@
 using namespace dealii;
 
 // Class representing the non-linear diffusion problem.
-class Heat
+class FisherKolmogorov1D
 {
 public:
   // Physical dimension (1D, 2D, 3D)
@@ -54,7 +54,7 @@ public:
     value(const Point<dim> & p,
           const unsigned int /*component*/ = 0) const override
     {
-      if (p[0]==1.0)
+      if (p[0]==0.0) 
         return 0.1;
       return 0.0;
     }
@@ -72,7 +72,7 @@ public:
     virtual double
     value(const Point<dim> &p, const unsigned int /*component*/ = 0) const override
     {
-      return std::exp(2.0 * (p[0] - get_time()));
+      return std::cos(M_PI*p[0])*std::exp(-get_time());
     }
 
     // Gradient evaluation.
@@ -85,7 +85,7 @@ public:
     {
       Tensor<1, dim> result;
 
-      result[0] = (2.0 * std::exp(2.0 * (p[0] - get_time())));
+      result[0] = -M_PI * std::sin(M_PI * p[0]) * std::exp(-get_time());
 
       return result;
     }
@@ -93,7 +93,7 @@ public:
 
   // Constructor. We provide the final time, time step Delta t and theta method
   // parameter as constructor arguments.
-  Heat(const unsigned int &N_,
+  FisherKolmogorov1D(const unsigned int &N_,
        const unsigned int &r_,
        const double       &T_,
        const double       &deltat_,
@@ -116,9 +116,6 @@ public:
   // Solve the problem.
   void
   solve();
-
-  double
-  compute_error(const VectorTools::NormType &norm_type);
 
 protected:
   // Assemble the mass and stiffness matrices.

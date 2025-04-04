@@ -1,7 +1,18 @@
-#include "HeatNonLinear.hpp"
+#include "FisherKolmogorov3D.hpp"
 
-void
-HeatNonLinear::setup()
+void FisherKolmogorov3D::set_solver_parameters(
+  const unsigned int max_newton_iter,
+  const double newton_tol,
+  const unsigned int max_cg_iter,
+  const double cg_tol_factor)
+{
+  max_newton_iterations = max_newton_iter;
+  newton_tolerance      = newton_tol;
+  max_cg_iterations     = max_cg_iter;
+  cg_tolerance_factor   = cg_tol_factor;
+}
+
+void FisherKolmogorov3D::setup()
 {
   // Create the mesh.
   {
@@ -84,8 +95,7 @@ HeatNonLinear::setup()
   }
 }
 
-void
-HeatNonLinear::assemble_system()
+void FisherKolmogorov3D::assemble_system()
 {
   const unsigned int dofs_per_cell = fe->dofs_per_cell;
   const unsigned int n_q           = quadrature->size();
@@ -129,10 +139,8 @@ HeatNonLinear::assemble_system()
       for (unsigned int q = 0; q < n_q; ++q)
         {
           // Evaluate coefficients on this quadrature node.
-          const double mu_0_loc = mu_0.value(fe_values.quadrature_point(q));
-          const double mu_1_loc = mu_1.value(fe_values.quadrature_point(q));
-          const double f_loc =
-            forcing_term.value(fe_values.quadrature_point(q));
+          const Tensor<2, dim> d_loc = d.value(fe_values.quadrature_point(q));
+          const double f_loc = forcing_term.value(fe_values.quadrature_point(q));
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
@@ -144,38 +152,32 @@ HeatNonLinear::assemble_system()
                                        fe_values.JxW(q);
 
                   // Non-linear stiffness matrix, first term.
-                  cell_matrix(i, j) +=
-                    (mu_0_loc + 2.0 * mu_1_loc * fe_values.shape_value(j, q) *
-                                  solution_loc[q]) *
-                    scalar_product(solution_gradient_loc[q],
-                                   fe_values.shape_grad(i, q)) *
-                    fe_values.JxW(q);
+                  cell_matrix(i, j) += d_loc * fe_values.shape_grad(i, q) *
+                                       fe_values.shape_grad(j, q) * fe_values.JxW(q);
 
                   // Non-linear stiffness matrix, second term.
-                  cell_matrix(i, j) +=
-                    (mu_0_loc + mu_1_loc * solution_loc[q] * solution_loc[q]) *
-                    scalar_product(fe_values.shape_grad(j, q),
-                                   fe_values.shape_grad(i, q)) *
-                    fe_values.JxW(q);
+                  cell_matrix(i, j) -= alpha * fe_values.shape_value(i, q) *
+                            (1 - 2 * solution_loc[q]) *
+                            fe_values.shape_value(j, q) * fe_values.JxW(q);
                 }
 
               // Assemble the residual vector (with changed sign).
 
               // Time derivative term.
-              cell_residual(i) -= (solution_loc[q] - solution_old_loc[q]) /
-                                  deltat * fe_values.shape_value(i, q) *
-                                  fe_values.JxW(q);
+              cell_residual(i) -= (solution_loc[q] - solution_old_loc[q]) / deltat *
+              fe_values.shape_value(i, q) * fe_values.JxW(q);
 
               // Diffusion term.
-              cell_residual(i) -=
-                (mu_0_loc + mu_1_loc * solution_loc[q] * solution_loc[q]) *
-                scalar_product(solution_gradient_loc[q],
-                               fe_values.shape_grad(i, q)) *
-                fe_values.JxW(q);
+              cell_residual(i) -= d_loc * fe_values.shape_grad(i, q) *
+                      solution_gradient_loc[q] * fe_values.JxW(q);
+
+              // Reaction term.
+              cell_residual(i) += (alpha * solution_loc[q] * (1 - solution_loc[q])) *
+                      fe_values.shape_value(i, q) * fe_values.JxW(q);
 
               // Forcing term.
               cell_residual(i) +=
-                f_loc * fe_values.shape_value(i, q) * fe_values.JxW(q);
+              f_loc * fe_values.shape_value(i, q) * fe_values.JxW(q);
             }
         }
 
@@ -187,100 +189,49 @@ HeatNonLinear::assemble_system()
 
   jacobian_matrix.compress(VectorOperation::add);
   residual_vector.compress(VectorOperation::add);
-
-  // We apply Dirichlet boundary conditions.
-  // The linear system solution is delta, which is the difference between
-  // u_{n+1}^{(k+1)} and u_{n+1}^{(k)}. Both must satisfy the same Dirichlet
-  // boundary conditions: therefore, on the boundary, delta = u_{n+1}^{(k+1)} -
-  // u_{n+1}^{(k+1)} = 0. We impose homogeneous Dirichlet BCs.
-  {
-    std::map<types::global_dof_index, double> boundary_values;
-
-    std::map<types::boundary_id, const Function<dim> *> boundary_functions;
-    Functions::ZeroFunction<dim>                        zero_function;
-
-    for (unsigned int i = 0; i < 6; ++i)
-      boundary_functions[i] = &zero_function;
-
-    VectorTools::interpolate_boundary_values(dof_handler,
-                                             boundary_functions,
-                                             boundary_values);
-
-    MatrixTools::apply_boundary_values(
-      boundary_values, jacobian_matrix, delta_owned, residual_vector, false);
-  }
 }
 
-void
-HeatNonLinear::solve_linear_system()
-{
-  SolverControl solver_control(1000, 1e-6 * residual_vector.l2_norm());
+void FisherKolmogorov3D::solve_linear_system() {
+  SolverControl solver_control(max_cg_iterations,
+                                   cg_tolerance_factor * residual_vector.l2_norm());
 
   SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
-  TrilinosWrappers::PreconditionSSOR      preconditioner;
+  TrilinosWrappers::PreconditionSSOR preconditioner;
   preconditioner.initialize(
-    jacobian_matrix, TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
+      jacobian_matrix, TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
 
   solver.solve(jacobian_matrix, delta_owned, residual_vector, preconditioner);
   pcout << "  " << solver_control.last_step() << " CG iterations" << std::endl;
 }
 
-void
-HeatNonLinear::solve_newton()
-{
-  const unsigned int n_max_iters        = 1000;
-  const double       residual_tolerance = 1e-6;
+void FisherKolmogorov3D::solve_newton() {
+  unsigned int n_iter = 0;
+  double residual_norm = newton_tolerance + 1;
 
-  unsigned int n_iter        = 0;
-  double       residual_norm = residual_tolerance + 1;
+  while (n_iter < max_newton_iterations && residual_norm > newton_tolerance) {
+    assemble_system();
+    residual_norm = residual_vector.l2_norm(); 
 
-  // We apply the boundary conditions to the initial guess (which is stored in
-  // solution_owned and solution).
-  {
-    IndexSet dirichlet_dofs = DoFTools::extract_boundary_dofs(dof_handler);
-    dirichlet_dofs          = dirichlet_dofs & dof_handler.locally_owned_dofs();
+    pcout << "  Newton iteration " << n_iter << "/" << max_newton_iterations
+          << " - ||r|| = " << std::scientific << std::setprecision(6)
+          << residual_norm << std::flush;
 
-    function_g.set_time(time);
+    // We actually solve the system only if the residual is larger than the
+    // tolerance.
+    if (residual_norm > newton_tolerance) {
+      solve_linear_system();
 
-    TrilinosWrappers::MPI::Vector vector_dirichlet(solution_owned);
-    VectorTools::interpolate(dof_handler, function_g, vector_dirichlet);
-
-    for (const auto &idx : dirichlet_dofs)
-      solution_owned[idx] = vector_dirichlet[idx];
-
-    solution_owned.compress(VectorOperation::insert);
-    solution = solution_owned;
-  }
-
-  while (n_iter < n_max_iters && residual_norm > residual_tolerance)
-    {
-      assemble_system();
-      residual_norm = residual_vector.l2_norm();
-
-      pcout << "  Newton iteration " << n_iter << "/" << n_max_iters
-            << " - ||r|| = " << std::scientific << std::setprecision(6)
-            << residual_norm << std::flush;
-
-      // We actually solve the system only if the residual is larger than the
-      // tolerance.
-      if (residual_norm > residual_tolerance)
-        {
-          solve_linear_system();
-
-          solution_owned += delta_owned;
-          solution = solution_owned;
-        }
-      else
-        {
-          pcout << " < tolerance" << std::endl;
-        }
-
-      ++n_iter;
+      solution_owned += delta_owned;
+      solution = solution_owned;
+    } else {
+      pcout << " < tolerance" << std::endl;
     }
+
+    ++n_iter;
+  }
 }
 
-void
-HeatNonLinear::output(const unsigned int &time_step) const
+void FisherKolmogorov3D::output(const unsigned int &time_step) const
 {
   DataOut<dim> data_out;
   data_out.add_data_vector(dof_handler, solution, "u");
@@ -293,11 +244,10 @@ HeatNonLinear::output(const unsigned int &time_step) const
   data_out.build_patches();
 
   data_out.write_vtu_with_pvtu_record(
-    "./", "output", time_step, MPI_COMM_WORLD, 3);
+    "./", std::to_string(mesh.n_global_active_cells()) + "_output", time_step, MPI_COMM_WORLD, 3);
 }
 
-void
-HeatNonLinear::solve()
+void FisherKolmogorov3D::solve()
 {
   pcout << "===============================================" << std::endl;
 
@@ -318,22 +268,49 @@ HeatNonLinear::solve()
   unsigned int time_step = 0;
 
   while (time < T - 0.5 * deltat)
-    {
-      time += deltat;
-      ++time_step;
+  {
+    time += deltat;
+    ++time_step;
 
-      // Store the old solution, so that it is available for assembly.
-      solution_old = solution;
+    // Store the old solution, so that it is available for assembly.
+    solution_old = solution;
 
-      pcout << "n = " << std::setw(3) << time_step << ", t = " << std::setw(5)
-            << std::fixed << time << std::endl;
+    pcout << "n = " << std::setw(3) << time_step << ", t = " << std::setw(5)
+          << std::fixed << time << std::endl;
 
-      // At every time step, we invoke Newton's method to solve the non-linear
-      // problem.
-      solve_newton();
+    // At every time step, we invoke Newton's method to solve the non-linear
+    // problem.
+    solve_newton();
 
-      output(time_step);
+    output(time_step);
 
-      pcout << std::endl;
-    }
+    pcout << std::endl;
+  }
+}
+
+double FisherKolmogorov3D::compute_error(const VectorTools::NormType &norm_type)
+{
+  FE_SimplexP<dim> fe_linear(1);
+  MappingFE        mapping(fe_linear);
+  // The error is an integral, and we approximate that integral using a
+  // quadrature formula. To make sure we are accurate enough, we use a
+  // quadrature formula with one node more than what we used in assembly.
+  const QGaussSimplex<dim> quadrature_error(r + 2);
+
+  exact_solution.set_time(time);
+
+  Vector<double> error_per_cell;
+  VectorTools::integrate_difference(mapping,
+                                    dof_handler,
+                                    solution,
+                                    exact_solution,
+                                    error_per_cell,
+                                    quadrature_error,
+                                    norm_type);
+
+  // Then, we add out all the cells.
+  const double error =
+    VectorTools::compute_global_error(mesh, error_per_cell, norm_type);
+
+  return error;
 }

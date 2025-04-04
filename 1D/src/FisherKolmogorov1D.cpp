@@ -1,11 +1,11 @@
-#include "Heat.hpp"
+#include "FisherKolmogorov1D.hpp"
 
-void Heat::setup() {
+void FisherKolmogorov1D::setup() {
   // Create the mesh.
   {
     std::cout << "Initializing the mesh" << std::endl;
 
-    GridGenerator::subdivided_hyper_cube(mesh, N + 1, 0.0, 2.0, true);
+    GridGenerator::subdivided_hyper_cube(mesh, N + 1, -1.0, 1.0, true);
 
     std::cout << "  Number of elements = " << mesh.n_active_cells()
               << std::endl;
@@ -78,7 +78,7 @@ void Heat::setup() {
   }
 }
 
-void Heat::assemble_system() {
+void FisherKolmogorov1D::assemble_system() {
   const unsigned int dofs_per_cell = fe->dofs_per_cell;
   const unsigned int n_q = quadrature->size();
 
@@ -152,7 +152,7 @@ void Heat::assemble_system() {
   }
 }
 
-void Heat::solve_linear_system() {
+void FisherKolmogorov1D::solve_linear_system() {
   SolverControl solver_control(1000, 1e-6 * residual_vector.l2_norm());
 
   SolverCG<Vector<double>> solver(solver_control);
@@ -166,7 +166,7 @@ void Heat::solve_linear_system() {
             << std::endl;
 }
 
-void Heat::solve_newton() {
+void FisherKolmogorov1D::solve_newton() {
   const unsigned int n_max_iters = 1000;
   const double residual_tolerance = 1e-6;
 
@@ -193,7 +193,7 @@ void Heat::solve_newton() {
   }
 }
 
-void Heat::output(const unsigned int &time_step) const {
+void FisherKolmogorov1D::output(const unsigned int &time_step) const {
   DataOut<dim> data_out;
   data_out.add_data_vector(dof_handler, solution, "u");
 
@@ -205,7 +205,7 @@ void Heat::output(const unsigned int &time_step) const {
   data_out.write_vtu(output);
 }
 
-void Heat::solve() {
+void FisherKolmogorov1D::solve() {
   std::cout << "===============================================" << std::endl;
 
   time = 0.0;
@@ -241,26 +241,4 @@ void Heat::solve() {
 
     std::cout << std::endl;
   }
-}
-
-double Heat::compute_error(const VectorTools::NormType &norm_type) {
-  FE_Q<dim> fe_linear(1);
-  MappingFE mapping(fe_linear);
-  // The error is an integral, and we approximate that integral using a
-  // quadrature formula. To make sure we are accurate enough, we use a
-  // quadrature formula with one node more than what we used in assembly.
-  const QGauss<dim> quadrature_error(r + 2);
-
-  exact_solution.set_time(time);
-
-  Vector<double> error_per_cell;
-  VectorTools::integrate_difference(mapping, dof_handler, solution,
-                                    exact_solution, error_per_cell,
-                                    quadrature_error, norm_type);
-
-  // Then, we add out all the cells.
-  const double error =
-      VectorTools::compute_global_error(mesh, error_per_cell, norm_type);
-
-  return error;
 }
