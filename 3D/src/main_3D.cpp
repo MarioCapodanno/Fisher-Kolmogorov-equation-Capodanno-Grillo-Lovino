@@ -1,28 +1,37 @@
-#include "FisherKolmogorov3D.hpp"
 #include "DiffusionTensor.hpp"
+#include "FisherKolmogorov3D.hpp"
+#include "ParameterReader.hpp"
 
 // Main function.
-int
-main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   Utilities::MPI::MPI_InitFinalize mpi_init(argc, argv);
+  const unsigned int mpi_rank =
+      Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
 
-  const unsigned int degree = 1;
+  // Read parameters
+  ParameterHandler prm;
+  SimulationParameters params;
+  ParameterReader parameter_reader(prm);
 
-  const double T      = 40.0;
-  const double deltat = 2.0;
-  const double dext   = 4.0;
-  const double daxn   = 40.0;
-  const double alpha = 0.3;
-  const Point<FisherKolmogorov3D::dim> rad_center = {50.0, 80.0, 40.0}; // approx Dorsal Motor Nucleus
-  // const Point<FisherKolmogorov3D::dim - 1> cir_center = {80.0, 40.0}; // approx Dorsal Motor Nucleus (y,z)
+  // TODO: parameter file should be passed as command line argument
+  std::string parameter_file = "parameters.prm";
 
-  // IsotropicDiffusionTensor<FisherKolmogorov3D::dim> diffusionTensor(dext);
-  RadialDiffusionTensor<FisherKolmogorov3D::dim> diffusionTensor(dext, daxn, rad_center);
-  // CircumferentialDiffusionTensor<FisherKolmogorov3D::dim> diffusionTensor(dext, daxn, cir_center);
-  // AxonBasedTensor<FisherKolmogorov3D::dim> diffusionTensor(dext, daxn, rad_center);
-  FisherKolmogorov3D problem("../mesh/brain-h3.0.msh", diffusionTensor, alpha, degree, T, deltat);
+  try {
+    params = parameter_reader.read_parameters(parameter_file);
+  } catch (const std::exception &e) {
+    if (mpi_rank == 0)
+      std::cerr << "Error reading parameter file: " << e.what() << std::endl;
+    return 1;
+  }
 
+  const std::string mesh_file = "../mesh/brain-h3.0.msh";
+
+  FisherKolmogorov3D problem(mesh_file, *params.diffusion_tensor, params.alpha,
+                             params.r, params.T, params.deltat);
+
+  problem.set_solver_parameters(
+      params.max_newton_iterations, params.newton_tolerance,
+      params.max_cg_iterations, params.cg_tolerance_factor);
   problem.setup();
   problem.solve();
 
