@@ -20,8 +20,16 @@ int main(int argc, char *argv[]) {
   const unsigned int mpi_rank =
       Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
 
-  // Ensure parameter file provided as command-line argument
-  std::string parameter_file = "parameters.prm";
+  std::string parameter_file = "../build/parameters.prm"; // Default value
+  if (argc > 1) {
+    parameter_file = argv[1]; // Use command line argument if provided
+  } else {
+    if (mpi_rank == 0) {
+      std::cout << "Usage: " << argv[0] << " <parameter_file>" << std::endl;
+      std::cout << "No parameter file specified, using default: "
+                << parameter_file << std::endl;
+    }
+  }
 
   // Read parameters
   ParameterHandler prm;

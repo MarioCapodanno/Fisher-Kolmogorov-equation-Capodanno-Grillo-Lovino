@@ -13,8 +13,16 @@ int main(int argc, char *argv[]) {
   SimulationParameters params;
   ParameterReader parameter_reader(prm);
 
-  // TODO: parameter file should be passed as command line argument
-  std::string parameter_file = "parameters.prm";
+  std::string parameter_file = "../build/parameters.prm"; // Default value
+  if (argc > 1) {
+    parameter_file = argv[1]; // Use command line argument if provided
+  } else {
+    if (mpi_rank == 0) {
+      std::cout << "Usage: " << argv[0] << " <parameter_file>" << std::endl;
+      std::cout << "No parameter file specified, using default: "
+                << parameter_file << std::endl;
+    }
+  }
 
   try {
     params = parameter_reader.read_parameters(parameter_file);
