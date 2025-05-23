@@ -1,11 +1,11 @@
 #ifndef PARAMETER_READER_HPP
 #define PARAMETER_READER_HPP
 
+#include "DiffusionTensor.hpp"
 #include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/subscriptor.h>
 #include <deal.II/numerics/data_out.h>
 #include <string>
-#include "DiffusionTensor.hpp"
 
 using namespace dealii;
 
@@ -139,16 +139,17 @@ void ParameterReader::declare_parameters() {
 
 void ParameterReader::create_diffusion_tensor(SimulationParameters &params) {
   if (params.diffusion_tensor_type == "Isotropic") {
-    params.diffusion_tensor = std::make_shared<IsotropicDiffusionTensor<3>>(
-        params.dext);
+    params.diffusion_tensor =
+        std::make_shared<IsotropicDiffusionTensor<3>>(params.dext);
   } else if (params.diffusion_tensor_type == "Radial") {
     params.diffusion_tensor = std::make_shared<RadialDiffusionTensor<3>>(
         params.dext, params.daxn, params.tensor_center);
   } else if (params.diffusion_tensor_type == "Circumferential") {
     // For circumferential, create a 2D point with just Y and Z coordinates
     Point<2> cir_center = {params.tensor_center[1], params.tensor_center[2]};
-    params.diffusion_tensor = std::make_shared<CircumferentialDiffusionTensor<3>>(
-        params.dext, params.daxn, cir_center);
+    params.diffusion_tensor =
+        std::make_shared<CircumferentialDiffusionTensor<3>>(
+            params.dext, params.daxn, cir_center);
   } else if (params.diffusion_tensor_type == "AxonBased") {
     params.diffusion_tensor = std::make_shared<AxonBasedTensor<3>>(
         params.dext, params.daxn, params.tensor_center);
@@ -164,7 +165,7 @@ void ParameterReader::create_diffusion_tensor(SimulationParameters &params) {
 
 SimulationParameters
 ParameterReader::read_parameters(const std::string &parameter_file) {
-  SimulationParameters params; 
+  SimulationParameters params;
 
   try {
     // Check if file exists first

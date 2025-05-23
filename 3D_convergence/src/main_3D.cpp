@@ -56,17 +56,12 @@ int main(int argc, char *argv[]) {
 
   // Loop over mesh files and solve problems
   for (const auto &mesh : mesh_file_names) {
-    FisherKolmogorov3D problem(mesh,
-                              params.dext,
-                              params.alpha, 
-                              params.r, 
-                              params.T, 
-                              params.deltat);
+    FisherKolmogorov3D problem(mesh, params.dext, params.alpha, params.r,
+                               params.T, params.deltat);
 
-    problem.set_solver_parameters(params.max_newton_iterations,
-                                  params.newton_tolerance,
-                                  params.max_cg_iterations,
-                                  params.cg_tolerance_factor); 
+    problem.set_solver_parameters(
+        params.max_newton_iterations, params.newton_tolerance,
+        params.max_cg_iterations, params.cg_tolerance_factor);
     problem.setup();
     problem.solve();
 

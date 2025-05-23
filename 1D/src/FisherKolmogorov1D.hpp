@@ -16,16 +16,16 @@
 #include <deal.II/fe/fe_values_extractors.h>
 #include <deal.II/fe/mapping_fe.h>
 
-#include <deal.II/grid/grid_in.h>
-#include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_in.h>
 #include <deal.II/grid/grid_out.h>
+#include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/tria.h>
 
-#include <deal.II/lac/solver_cg.h>
-#include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/precondition.h>
+#include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/vector.h>
 
@@ -40,39 +40,32 @@
 using namespace dealii;
 
 // Class representing the non-linear diffusion problem.
-class FisherKolmogorov1D
-{
+class FisherKolmogorov1D {
 public:
   // Physical dimension (1D, 2D, 3D)
   static constexpr unsigned int dim = 1;
 
   // Function for the initial condition.
-  class FunctionU0 : public Function<dim>
-  {
+  class FunctionU0 : public Function<dim> {
   public:
-    virtual double
-    value(const Point<dim> & p,
-          const unsigned int /*component*/ = 0) const override
-    {
-      if (p[0]==0.0) 
+    virtual double value(const Point<dim> &p,
+                         const unsigned int /*component*/ = 0) const override {
+      if (p[0] == 0.0)
         return 0.1;
       return 0.0;
     }
   };
 
-    // Exact solution.
-  class ExactSolution : public Function<dim>
-  {
+  // Exact solution.
+  class ExactSolution : public Function<dim> {
   public:
     // Constructor.
-    ExactSolution()
-    {}
+    ExactSolution() {}
 
     // Evaluation.
-    virtual double
-    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const override
-    {
-      return std::cos(M_PI*p[0])*std::exp(-get_time());
+    virtual double value(const Point<dim> &p,
+                         const unsigned int /*component*/ = 0) const override {
+      return std::cos(M_PI * p[0]) * std::exp(-get_time());
     }
 
     // Gradient evaluation.
@@ -81,8 +74,8 @@ public:
     // practice contain a single number. Nonetheless, we need to return an
     // object of type Tensor.
     virtual Tensor<1, dim>
-    gradient(const Point<dim> &p, const unsigned int /*component*/ = 0) const override
-    {
+    gradient(const Point<dim> &p,
+             const unsigned int /*component*/ = 0) const override {
       Tensor<1, dim> result;
 
       result[0] = -M_PI * std::sin(M_PI * p[0]) * std::exp(-get_time());
@@ -93,46 +86,31 @@ public:
 
   // Constructor. We provide the final time, time step Delta t and theta method
   // parameter as constructor arguments.
-  FisherKolmogorov1D(const unsigned int &N_,
-       const unsigned int &r_,
-       const double       &T_,
-       const double       &deltat_,
-       const double       &theta_,
-       const double       &d_,
-       const double       &alpha_)
-    : T(T_)
-    , N(N_)
-    , r(r_)
-    , deltat(deltat_)
-    , theta(theta_)
-    , d(d_)
-    , alpha(alpha_)
-  {}
+  FisherKolmogorov1D(const unsigned int &N_, const unsigned int &r_,
+                     const double &T_, const double &deltat_,
+                     const double &theta_, const double &d_,
+                     const double &alpha_)
+      : T(T_), N(N_), r(r_), deltat(deltat_), theta(theta_), d(d_),
+        alpha(alpha_) {}
 
   // Initialization.
-  void
-  setup();
+  void setup();
 
   // Solve the problem.
-  void
-  solve();
+  void solve();
 
 protected:
   // Assemble the mass and stiffness matrices.
-  void
-  assemble_system();
+  void assemble_system();
 
   // Assemble the linear system.
-  void
-  solve_linear_system();
+  void solve_linear_system();
 
   // Solve the newton problem.
-  void
-  solve_newton();
+  void solve_newton();
 
   // Output.
-  void
-  output(const unsigned int &time_step) const;
+  void output(const unsigned int &time_step) const;
 
   // Problem definition. ///////////////////////////////////////////////////////
 

@@ -5,11 +5,9 @@
 #include "FisherKolmogorov1D.hpp"
 
 // Main function.
-int
-main(int argc, char * argv[])
-{
+int main(int argc, char *argv[]) {
   // Default values:
-  double d     = 0.0001;
+  double d = 0.0001;
   double alpha = 1.0;
 
   // Check for command-line arguments.
@@ -20,7 +18,7 @@ main(int argc, char * argv[])
 
   const unsigned int N = 199;
   const unsigned int degree = 1;
-  const double T     = 20.0;
+  const double T = 20.0;
   const double theta = 1;
   const double deltat = 0.1;
 
@@ -28,7 +26,6 @@ main(int argc, char * argv[])
 
   problem.setup();
   problem.solve();
-  
 
   return 0;
 }
