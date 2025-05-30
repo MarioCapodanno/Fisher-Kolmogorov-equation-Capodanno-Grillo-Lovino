@@ -26,7 +26,7 @@ end
 # Time stepping parameters
 subsection Time stepping parameters
   set T = 1.0
-  set deltat = 0.1
+  set deltat = 0.01
   set Theta = 1.0
 end
 

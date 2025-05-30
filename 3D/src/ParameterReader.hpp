@@ -122,7 +122,7 @@ void ParameterReader::declare_parameters() {
   {
     prm.declare_entry(
         "Diffusion tensor type", "Isotropic",
-        Patterns::Selection("Isotropic|Radial|Circumferential|AxonBased"),
+        Patterns::Selection("Isotropic|Radial|Circumferential"),
         "Type of diffusion tensor to use");
 
     prm.declare_entry("Center X", "50.0", Patterns::Double(),
@@ -150,9 +150,6 @@ void ParameterReader::create_diffusion_tensor(SimulationParameters &params) {
     params.diffusion_tensor =
         std::make_shared<CircumferentialDiffusionTensor<3>>(
             params.dext, params.daxn, cir_center);
-  } else if (params.diffusion_tensor_type == "AxonBased") {
-    params.diffusion_tensor = std::make_shared<AxonBasedTensor<3>>(
-        params.dext, params.daxn, params.tensor_center);
   } else {
     // Default to Radial if something goes wrong
     std::cerr << "Unknown diffusion tensor type: "

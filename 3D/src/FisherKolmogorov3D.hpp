@@ -54,11 +54,9 @@ public:
   public:
     virtual double value(const Point<dim> &p,
                          const unsigned int /*component*/ = 0) const override {
-      // (p[0] < 65 && p[0] > 55 && p[1] < 85 && p[1] > 75 && p[2] < 45 && p[2]
-      // > 35) // approx Dorsal Motor Nucleus (p[0] < 55 && p[0] > 50  && p[1] <
-      // 82 && p[1] > 74 && p[2] < 70 && p[2] > 60) // approx center
-      if (p[0] < 65 && p[0] > 55 && p[1] < 85 && p[1] > 75 && p[2] < 45 &&
-          p[2] > 35) {
+      // (p[0] < 65 && p[0] > 55 && p[1] < 85 && p[1] > 75 && p[2] < 45 && p[2] > 35) // approx Dorsal Motor Nucleus 
+      // (p[0] < 55 && p[0] > 50 && p[1] < 82 && p[1] > 74 && p[2] < 70 && p[2] > 60) // approx center
+      if (p[0] < 65 && p[0] > 55 && p[1] < 85 && p[1] > 75 && p[2] < 45 && p[2] > 35) {
         return 0.9;
       } else {
         return 0.0;
