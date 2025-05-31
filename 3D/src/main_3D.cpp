@@ -8,13 +8,27 @@ int main(int argc, char *argv[]) {
   const unsigned int mpi_rank =
       Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
 
-  // Create a ConditionalOStream for printing only on rank 0
+  // Stream for std::cout output:
   ConditionalOStream pcout(std::cout, mpi_rank == 0);
 
-  // Create a TimerOutput object. We choose to print only at the end (summary),
-  // and collect wall‐clock times.
+  //Build an ofstream for writing the timer summary:
+  const unsigned int n_procs = Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD);
+  std::ostringstream fname;
+  fname << "timer_summary_np" << n_procs << ".txt";
+  std::ofstream timer_file(fname.str());
+  if (mpi_rank == 0 && !timer_file.is_open())
+  {
+    std::cerr << "ERROR: could not open '" << fname.str() 
+              << "' for writing\n";
+    return 1;
+  }
+
+  // Build a ConditionalOStream for the timer output:
+  ConditionalOStream timer_stream(timer_file, mpi_rank == 0);
+
+  // Create a TimerOutput object to manage the timing of the program.
   TimerOutput timer(MPI_COMM_WORLD,
-                    pcout,
+                    timer_stream,
                     TimerOutput::summary,
                     TimerOutput::wall_times);
 
