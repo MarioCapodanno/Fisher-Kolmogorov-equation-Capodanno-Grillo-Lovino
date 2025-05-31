@@ -5,6 +5,7 @@
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/timer.h>
 
 #include <deal.II/distributed/fully_distributed_tria.h>
 
@@ -69,11 +70,12 @@ public:
   FisherKolmogorov3D(const std::string &mesh_file_name_,
                      DiffusionTensor<dim> &d_, const double &alpha_,
                      const unsigned int &r_, const double &T_,
-                     const double &deltat_)
+                     const double &deltat_, ConditionalOStream &pcout_in,
+                     TimerOutput &timer_in)
       : mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)),
         mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD)),
-        pcout(std::cout, mpi_rank == 0), d(d_), alpha(alpha_), T(T_),
-        mesh_file_name(mesh_file_name_), r(r_), deltat(deltat_),
+        d(d_), alpha(alpha_), T(T_), mesh_file_name(mesh_file_name_), 
+        r(r_), deltat(deltat_), pcout(pcout_in), timer(timer_in),
         mesh(MPI_COMM_WORLD) {}
 
   // Set the parameters for the Newton method and CG solver.
@@ -108,9 +110,6 @@ protected:
 
   // This MPI process.
   const unsigned int mpi_rank;
-
-  // Parallel output stream.
-  ConditionalOStream pcout;
 
   // Problem definition. ///////////////////////////////////////////////////////
 
@@ -154,6 +153,12 @@ protected:
 
   // Time step.
   const double deltat;
+
+  // Parallel output stream.
+  ConditionalOStream &pcout;
+
+  // Timer for output.
+  TimerOutput &timer;
 
   // Mesh.
   parallel::fullydistributed::Triangulation<dim> mesh;

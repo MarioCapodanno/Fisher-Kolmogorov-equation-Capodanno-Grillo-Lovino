@@ -20,6 +20,9 @@ void FisherKolmogorov3D::set_solver_parameters(
 }
 
 void FisherKolmogorov3D::setup() {
+  // Time this entire setup phase
+  TimerOutput::Scope t(timer, "Setup");
+
   // Create the mesh.
   {
     pcout << "Initializing the mesh" << std::endl;
@@ -102,6 +105,8 @@ void FisherKolmogorov3D::setup() {
 }
 
 void FisherKolmogorov3D::assemble_system() {
+  TimerOutput::Scope t(timer, "Assemble system");
+
   const unsigned int dofs_per_cell = fe->dofs_per_cell;
   const unsigned int n_q = quadrature->size();
 
@@ -187,6 +192,8 @@ void FisherKolmogorov3D::assemble_system() {
 }
 
 void FisherKolmogorov3D::solve_linear_system() {
+  TimerOutput::Scope t(timer, "Solve linear system");
+
   // SolverControl solver_control(1000, 1e-6 * residual_vector.l2_norm());
   SolverControl solver_control(max_cg_iterations,
                                cg_tolerance_factor * residual_vector.l2_norm());
@@ -201,6 +208,7 @@ void FisherKolmogorov3D::solve_linear_system() {
 }
 
 void FisherKolmogorov3D::solve_newton() {
+  TimerOutput::Scope t(timer, "Solve nonlinear (Newton)");
 
   unsigned int n_iter = 0;
   double residual_norm = newton_tolerance + 1;
@@ -229,6 +237,8 @@ void FisherKolmogorov3D::solve_newton() {
 }
 
 void FisherKolmogorov3D::output(const unsigned int &time_step) const {
+  TimerOutput::Scope t(timer, "Writing");
+
   DataOut<dim> data_out;
   data_out.add_data_vector(dof_handler, solution, "u");
 
@@ -244,6 +254,8 @@ void FisherKolmogorov3D::output(const unsigned int &time_step) const {
 }
 
 void FisherKolmogorov3D::solve() {
+  TimerOutput::Scope t(timer, "Time loop (solve)");
+
   pcout << "===============================================" << std::endl;
 
   time = 0.0;

@@ -8,6 +8,16 @@ int main(int argc, char *argv[]) {
   const unsigned int mpi_rank =
       Utilities::MPI::this_mpi_process(MPI_COMM_WORLD);
 
+  // Create a ConditionalOStream for printing only on rank 0
+  ConditionalOStream pcout(std::cout, mpi_rank == 0);
+
+  // Create a TimerOutput object. We choose to print only at the end (summary),
+  // and collect wall‐clock times.
+  TimerOutput timer(MPI_COMM_WORLD,
+                    pcout,
+                    TimerOutput::summary,
+                    TimerOutput::wall_times);
+
   // Read parameters
   ParameterHandler prm;
   SimulationParameters params;
@@ -35,7 +45,7 @@ int main(int argc, char *argv[]) {
   const std::string mesh_file = "../mesh/brain-h3.0.msh";
 
   FisherKolmogorov3D problem(mesh_file, *params.diffusion_tensor, params.alpha,
-                             params.r, params.T, params.deltat);
+                             params.r, params.T, params.deltat, pcout, timer);
 
   problem.set_solver_parameters(
       params.max_newton_iterations, params.newton_tolerance,
