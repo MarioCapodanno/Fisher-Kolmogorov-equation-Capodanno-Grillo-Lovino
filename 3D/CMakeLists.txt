@@ -41,9 +41,9 @@ end
 # Diffusion tensor parameters
 subsection Diffusion tensor parameters
   set Diffusion tensor type = Isotropic
-  set Center X = 50.0
-  set Center Y = 80.0
-  set Center Z = 40.0
+  set Center X = 55.0
+  set Center Y = 75.0
+  set Center Z = 65.0
 end
 ]=])
 # --------------------------------------------------------------------------
