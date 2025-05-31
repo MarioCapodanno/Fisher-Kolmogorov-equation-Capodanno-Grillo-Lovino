@@ -125,13 +125,13 @@ void ParameterReader::declare_parameters() {
         Patterns::Selection("Isotropic|Radial|Circumferential"),
         "Type of diffusion tensor to use");
 
-    prm.declare_entry("Center X", "50.0", Patterns::Double(),
+    prm.declare_entry("Center X", "55.0", Patterns::Double(),
                       "X coordinate of center point for directional tensors");
 
-    prm.declare_entry("Center Y", "80.0", Patterns::Double(),
+    prm.declare_entry("Center Y", "75.0", Patterns::Double(),
                       "Y coordinate of center point for directional tensors");
 
-    prm.declare_entry("Center Z", "40.0", Patterns::Double(),
+    prm.declare_entry("Center Z", "65.0", Patterns::Double(),
                       "Z coordinate of center point for directional tensors");
   }
   prm.leave_subsection();
